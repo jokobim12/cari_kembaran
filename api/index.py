@@ -86,7 +86,7 @@ def home():
                 if os.path.exists(temp_path):
                     os.remove(temp_path)
                 
-                if not results:
+                if not results and not error:
                     error = "Tidak ditemukan kembaran yang mirip. Coba foto lain!"
                     
             except Exception as e:
