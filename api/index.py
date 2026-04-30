@@ -34,40 +34,46 @@ def home():
                 # 1. Upload ke Hosting Sementara (Catbox) agar dapat URL Publik
                 import requests
                 url_catbox = "https://catbox.moe/user/api.php"
-                with open(temp_path, 'rb') as f:
-                    upload_response = requests.post(
-                        url_catbox, 
-                        data={"reqtype": "fileupload"}, 
-                        files={"fileToUpload": f}
-                    )
+                
+                # Gunakan file stream langsung agar lebih stabil di Vercel
+                file.seek(0)
+                upload_response = requests.post(
+                    url_catbox, 
+                    data={"reqtype": "fileupload"}, 
+                    files={"fileToUpload": (file.filename, file.stream, file.mimetype)},
+                    timeout=15
+                )
                 
                 if upload_response.status_code != 200:
-                    error = "Gagal mengunggah gambar ke server sementara. Coba lagi."
+                    error = f"Gagal mengunggah ke server sementara (Status: {upload_response.status_code})."
                 else:
                     public_image_url = upload_response.text.strip()
                     
-                    # 2. Kirim URL Publik tersebut ke Google Lens (SerpApi)
-                    search = GoogleSearch({
-                        "engine": "google_lens",
-                        "url": public_image_url,
-                        "api_key": SERPAPI_KEY
-                    })
-                    
-                    # Ambil hasil pencarian
-                    results_data = search.get_dict()
-                    
-                    if 'error' in results_data:
-                        print("DEBUG Error Message:", results_data['error'])
-                        error = f"Error dari AI: {results_data['error']}"
-                    
-                    results = results_data.get("visual_matches", [])
-                    if not results:
-                        results = results_data.get("reverse_image_search", [])
+                    # Cek apakah Catbox memblokir Vercel (Cloudflare block biasanya mengembalikan HTML, bukan link HTTP)
+                    if not public_image_url.startswith("http"):
+                        error = "Server Catbox menolak permintaan dari Vercel (Mungkin diblokir Cloudflare). Kita butuh layanan hosting gambar alternatif seperti ImgBB."
+                    else:
+                        # 2. Kirim URL Publik tersebut ke Google Lens (SerpApi)
+                        search = GoogleSearch({
+                            "engine": "google_lens",
+                            "url": public_image_url,
+                            "api_key": SERPAPI_KEY
+                        })
                         
-                    if not results and not error:
-                        error = "Tidak ditemukan kembaran yang mirip. Coba foto lain!"
+                        # Ambil hasil pencarian
+                        results_data = search.get_dict()
+                        
+                        if 'error' in results_data:
+                            error = f"Error dari SerpApi: {results_data['error']}"
+                        else:
+                            results = results_data.get("visual_matches", [])
+                            if not results:
+                                results = results_data.get("reverse_image_search", [])
+                                
+                            if not results:
+                                error = "Pencarian berhasil, namun tidak ditemukan kembaran yang mirip. Coba foto lain!"
 
-                # Hapus file setelah selesai agar hemat storage
+                # Hapus file setelah selesai (jika sempat terbuat)
                 if os.path.exists(temp_path):
                     os.remove(temp_path)
                 
