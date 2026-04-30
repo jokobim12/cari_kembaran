@@ -18,74 +18,29 @@ def home():
     error = None
     
     if request.method == 'POST':
-        file = request.files.get('file')
+        image_url = request.form.get('image_url')
         
-        if not file or file.filename == '':
-            error = "Silakan upload foto terlebih dahulu!"
+        if not image_url:
+            error = "Gagal memproses foto. Pastikan Anda mengunggah gambar yang valid."
         else:
             try:
-                # Simpan sementara di /tmp
-                if not os.path.exists("/tmp"):
-                    os.makedirs("/tmp")
+                # Langsung Kirim URL Publik tersebut ke Google Lens (SerpApi)
+                search = GoogleSearch({
+                    "engine": "google_lens",
+                    "url": image_url,
+                    "api_key": SERPAPI_KEY
+                })
                 
-                temp_path = os.path.join("/tmp", file.filename)
-                file.save(temp_path)
+                # Ambil hasil pencarian
+                results_data = search.get_dict()
                 
-                # 1. Upload ke Hosting Sementara (Catbox) agar dapat URL Publik
-                # Gunakan file.read() agar seluruh byte foto benar-benar terkirim
-                file_bytes = file.read()
-                
-                # Cek apakah Vercel berhasil membaca file
-                if len(file_bytes) == 0:
-                    error = "Error Sistem: File terdeteksi kosong (0 byte). Vercel gagal memproses file upload. Solusi: Gunakan input URL gambar."
+                if 'error' in results_data:
+                    error = f"Error dari SerpApi: {results_data['error']}"
                 else:
-                    # 1. Upload ke Hosting Sementara (Uguu.se)
-                    import requests
-                    url_uguu = "https://uguu.se/upload"
-                    
-                    upload_response = requests.post(
-                        url_uguu, 
-                        files={"files[]": (file.filename, file_bytes, file.mimetype)},
-                        timeout=15
-                    )
-                    
-                    if upload_response.status_code != 200:
-                        error = f"Gagal mengunggah ke server sementara (Status: {upload_response.status_code})."
-                    else:
-                        response_data = upload_response.json()
-                        if not response_data.get('success'):
-                            error = "Gagal mendapatkan link publik dari server sementara."
-                        else:
-                            public_image_url = response_data['files'][0]['url']
-                            
-                            # Cek apakah URL valid
-                            if not public_image_url.startswith("http"):
-                                error = "URL gambar tidak valid."
-                            else:
-                                # 2. Kirim URL Publik tersebut ke Google Lens (SerpApi)
-                                search = GoogleSearch({
-                                    "engine": "google_lens",
-                                    "url": public_image_url,
-                                    "api_key": SERPAPI_KEY
-                                })
-                                
-                                # Ambil hasil pencarian
-                                results_data = search.get_dict()
-                                
-                                if 'error' in results_data:
-                                    error = f"Error dari SerpApi: {results_data['error']}"
-                                else:
-                                    results = results_data.get("visual_matches", [])
-                                    if not results:
-                                        results = results_data.get("reverse_image_search", [])
-                                        
-                                    if not results:
-                                        error = "Pencarian berhasil, namun tidak ditemukan kembaran yang mirip. Coba foto lain!"
-
-                # Hapus file setelah selesai (jika sempat terbuat)
-                if os.path.exists(temp_path):
-                    os.remove(temp_path)
-                
+                    results = results_data.get("visual_matches", [])
+                    if not results:
+                        results = results_data.get("reverse_image_search", [])
+                        
                 if not results and not error:
                     error = "Tidak ditemukan kembaran yang mirip. Coba foto lain!"
                     
