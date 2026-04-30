@@ -35,12 +35,12 @@ def home():
                 import requests
                 url_catbox = "https://catbox.moe/user/api.php"
                 
-                # Gunakan file stream langsung agar lebih stabil di Vercel
-                file.seek(0)
+                # Gunakan file.read() agar seluruh byte foto benar-benar terkirim (Vercel sering gagal jika pakai stream)
+                file_bytes = file.read()
                 upload_response = requests.post(
                     url_catbox, 
                     data={"reqtype": "fileupload"}, 
-                    files={"fileToUpload": (file.filename, file.stream, file.mimetype)},
+                    files={"fileToUpload": (file.filename, file_bytes, file.mimetype)},
                     timeout=15
                 )
                 
