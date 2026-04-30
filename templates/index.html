@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CariKembaran.ai</title>
+    
+    <!-- Menggunakan Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        emerald: {
+                            600: '#059669',
+                            700: '#047857',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                    },
+                    borderRadius: {
+                        'custom': '10px',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .loading-overlay { display: none; }
+        .loading-overlay.active { display: flex; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+<!-- Loading Overlay -->
+<div id="loading" class="loading-overlay fixed inset-0 bg-white/95 z-50 flex-col justify-center items-center">
+    <!-- Menggunakan animasi bawaan Tailwind (animate-pulse) -->
+    <div class="w-16 h-16 bg-emerald-600 animate-pulse mb-4"></div>
+    <h4 class="text-xl font-bold text-emerald-600">AI sedang mencari...</h4>
+    <p class="text-sm text-slate-500 mt-1">Menelusuri jutaan wajah di internet</p>
+</div>
+
+<!-- Hero Section -->
+<section class="bg-emerald-600 text-white pt-10 pb-16">
+    <div class="container mx-auto px-4 text-center">
+        <h1 class="text-3xl md:text-5xl font-bold mb-2">CariKembaran.ai</h1>
+        <p class="text-emerald-100 text-sm md:text-base">Temukan orang yang paling mirip denganmu</p>
+    </div>
+</section>
+
+<!-- Main Content -->
+<div class="container mx-auto px-4 mt-16 max-w-2xl flex-grow">
+    <!-- Form Card -->
+    <div class="bg-white rounded-custom border border-slate-200 p-6 md:p-8 mb-10">
+        {% if error %}
+        <div class="bg-red-50 border border-red-200 text-red-700 p-4 rounded-custom mb-6 text-sm">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form id="scanForm" method="POST" enctype="multipart/form-data">
+            <div class="mb-6 text-center">
+                <label class="block font-bold mb-3 text-slate-700">Upload Foto Wajahmu</label>
+                <div class="p-6 border-2 border-dashed border-slate-300 bg-slate-50 rounded-custom hover:bg-slate-100 transition-colors">
+                    <input type="file" name="file" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-custom file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer" accept="image/*" required>
+                </div>
+            </div>
+
+            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-custom transition-colors">
+                Mulai Scanning Wajah
+            </button>
+        </form>
+    </div>
+
+    <!-- Results Section -->
+    {% if results %}
+    <div class="text-center mb-6">
+        <h3 class="text-2xl font-bold text-slate-800">Hasil Kemiripan</h3>
+        <p class="text-sm text-slate-500">Ditemukan beberapa orang yang mirip:</p>
+    </div>
+    
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-10">
+        {% for match in results[:12] %}
+        <div class="bg-white rounded-custom border border-slate-200 overflow-hidden flex flex-col">
+            <img src="{{ match.thumbnail }}" class="w-full h-40 md:h-48 object-cover border-b border-slate-200" alt="Match">
+            <div class="p-3 text-center flex-grow flex flex-col justify-between">
+                <div class="text-[10px] text-slate-500 uppercase tracking-wider truncate mb-2">{{ match.source or 'Internet' }}</div>
+                <a href="{{ match.link }}" target="_blank" class="text-xs font-bold text-emerald-600 hover:text-emerald-700">
+                    Buka Sumber &rarr;
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Footer -->
+<footer class="text-center py-6 text-slate-400 text-xs mt-auto">
+    <p>CariKembaran.ai - Teknologi Visual AI</p>
+</footer>
+
+<script>
+    document.getElementById('scanForm').onsubmit = function() {
+        document.getElementById('loading').classList.add('active');
+    };
+</script>
+
+</body>
+</html>
