@@ -63,24 +63,24 @@ def home():
                                 error = "URL gambar tidak valid."
                             else:
                                 # 2. Kirim URL Publik tersebut ke Google Lens (SerpApi)
-                        search = GoogleSearch({
-                            "engine": "google_lens",
-                            "url": public_image_url,
-                            "api_key": SERPAPI_KEY
-                        })
-                        
-                        # Ambil hasil pencarian
-                        results_data = search.get_dict()
-                        
-                        if 'error' in results_data:
-                            error = f"Error dari SerpApi: {results_data['error']}"
-                        else:
-                            results = results_data.get("visual_matches", [])
-                            if not results:
-                                results = results_data.get("reverse_image_search", [])
+                                search = GoogleSearch({
+                                    "engine": "google_lens",
+                                    "url": public_image_url,
+                                    "api_key": SERPAPI_KEY
+                                })
                                 
-                            if not results:
-                                error = "Pencarian berhasil, namun tidak ditemukan kembaran yang mirip. Coba foto lain!"
+                                # Ambil hasil pencarian
+                                results_data = search.get_dict()
+                                
+                                if 'error' in results_data:
+                                    error = f"Error dari SerpApi: {results_data['error']}"
+                                else:
+                                    results = results_data.get("visual_matches", [])
+                                    if not results:
+                                        results = results_data.get("reverse_image_search", [])
+                                        
+                                    if not results:
+                                        error = "Pencarian berhasil, namun tidak ditemukan kembaran yang mirip. Coba foto lain!"
 
                 # Hapus file setelah selesai (jika sempat terbuat)
                 if os.path.exists(temp_path):
