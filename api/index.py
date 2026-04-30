@@ -32,28 +32,37 @@ def home():
                 file.save(temp_path)
                 
                 # 1. Upload ke Hosting Sementara (Catbox) agar dapat URL Publik
-                import requests
-                url_catbox = "https://catbox.moe/user/api.php"
-                
-                # Gunakan file.read() agar seluruh byte foto benar-benar terkirim (Vercel sering gagal jika pakai stream)
+                # Gunakan file.read() agar seluruh byte foto benar-benar terkirim
                 file_bytes = file.read()
-                upload_response = requests.post(
-                    url_catbox, 
-                    data={"reqtype": "fileupload"}, 
-                    files={"fileToUpload": (file.filename, file_bytes, file.mimetype)},
-                    timeout=15
-                )
                 
-                if upload_response.status_code != 200:
-                    error = f"Gagal mengunggah ke server sementara (Status: {upload_response.status_code})."
+                # Cek apakah Vercel berhasil membaca file
+                if len(file_bytes) == 0:
+                    error = "Error Sistem: File terdeteksi kosong (0 byte). Vercel gagal memproses file upload. Solusi: Gunakan input URL gambar."
                 else:
-                    public_image_url = upload_response.text.strip()
+                    # 1. Upload ke Hosting Sementara (Uguu.se)
+                    import requests
+                    url_uguu = "https://uguu.se/upload"
                     
-                    # Cek apakah Catbox memblokir Vercel (Cloudflare block biasanya mengembalikan HTML, bukan link HTTP)
-                    if not public_image_url.startswith("http"):
-                        error = "Server Catbox menolak permintaan dari Vercel (Mungkin diblokir Cloudflare). Kita butuh layanan hosting gambar alternatif seperti ImgBB."
+                    upload_response = requests.post(
+                        url_uguu, 
+                        files={"files[]": (file.filename, file_bytes, file.mimetype)},
+                        timeout=15
+                    )
+                    
+                    if upload_response.status_code != 200:
+                        error = f"Gagal mengunggah ke server sementara (Status: {upload_response.status_code})."
                     else:
-                        # 2. Kirim URL Publik tersebut ke Google Lens (SerpApi)
+                        response_data = upload_response.json()
+                        if not response_data.get('success'):
+                            error = "Gagal mendapatkan link publik dari server sementara."
+                        else:
+                            public_image_url = response_data['files'][0]['url']
+                            
+                            # Cek apakah URL valid
+                            if not public_image_url.startswith("http"):
+                                error = "URL gambar tidak valid."
+                            else:
+                                # 2. Kirim URL Publik tersebut ke Google Lens (SerpApi)
                         search = GoogleSearch({
                             "engine": "google_lens",
                             "url": public_image_url,
