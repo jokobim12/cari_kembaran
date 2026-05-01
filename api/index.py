@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_from_directory
 from serpapi import GoogleSearch
 
 # Ambil path absolut folder ini
@@ -48,6 +48,14 @@ def home():
                 error = f"Terjadi kesalahan: {str(e)}"
                 
     return render_template('index.html', results=results, error=error)
+
+@app.route('/manifest.json')
+def manifest():
+    return send_from_directory('static', 'manifest.json')
+
+@app.route('/sw.js')
+def service_worker():
+    return send_from_directory('static', 'sw.js')
 
 # Handler untuk Vercel
 def handler(event, context):

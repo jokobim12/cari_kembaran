@@ -9,7 +9,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="/static/logo.png">
-    <link rel="manifest" href="/static/manifest.json">
+    <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#10b981">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -83,6 +83,21 @@
         </button>
     </div>
 </section>
+
+<!-- Floating Install Notification (PWA) -->
+<div id="installBanner" class="fixed bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 z-[100] transform transition-all duration-500 translate-y-full opacity-0 flex items-center gap-4">
+    <div class="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 shadow-inner">
+        <img src="/static/logo.png" class="w-full h-full object-cover">
+    </div>
+    <div class="flex-grow">
+        <h5 class="text-sm font-bold text-slate-800">CariKembaran.ai</h5>
+        <p class="text-[10px] text-slate-500 leading-tight">Install aplikasi untuk akses lebih cepat & mudah!</p>
+    </div>
+    <div class="flex flex-col gap-2">
+        <button onclick="triggerInstall()" class="bg-emerald-600 text-white text-[10px] font-bold px-3 py-2 rounded-lg whitespace-nowrap">Install</button>
+        <button onclick="dismissBanner()" class="text-slate-400 text-[10px] font-medium hover:text-slate-600">Nanti saja</button>
+    </div>
+</div>
 
 <!-- Main Content -->
 <div class="container mx-auto px-4 mt-16 max-w-2xl flex-grow">
@@ -318,11 +333,49 @@
         `).join('');
     }
 
+    // --- Fitur 3: Search History (Simplified Version) ---
+    function saveToHistory(results) {
+        if (!results || results.length === 0) return;
+        const userPhoto = sessionStorage.getItem('lastUserPhoto');
+        if (!userPhoto) return;
+        const bestMatch = results[0];
+        const score = document.querySelector('.similarity-badge[data-index="1"]')?.dataset.score || "99.7";
+        const historyData = { photo: userPhoto, bestMatch: bestMatch.thumbnail, link: bestMatch.link, score: score };
+        let history = JSON.parse(localStorage.getItem('ck_history') || '[]');
+        if (history.length > 0 && history[0].link === historyData.link && history[0].photo === historyData.photo) return;
+        history.unshift(historyData);
+        history = history.slice(0, 10);
+        localStorage.setItem('ck_history', JSON.stringify(history));
+        renderHistoryList();
+    }
+
+    function renderHistoryList() {
+        const history = JSON.parse(localStorage.getItem('ck_history') || '[]');
+        const container = document.getElementById('historySection');
+        const list = document.getElementById('historyList');
+        if (history.length === 0) { container.classList.add('hidden'); return; }
+        container.classList.remove('hidden');
+        list.innerHTML = history.map((item, idx) => `
+            <div class="flex-shrink-0 group relative history-item">
+                <div onclick="openCompareFromHistory(${idx})" class="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-white shadow-md overflow-hidden bg-slate-200 cursor-pointer hover:scale-105 transition-all">
+                    <img src="${item.photo}" class="w-full h-full object-cover">
+                </div>
+                <button onclick="deleteHistoryItem(event, ${idx})" class="absolute -top-1 -left-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-20">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+                <div class="absolute -bottom-1 -right-1 w-7 h-7 bg-emerald-600 text-white rounded-full flex items-center justify-center text-[8px] font-bold border-2 border-white shadow-sm pointer-events-none">
+                    ${item.score}%
+                </div>
+            </div>
+        `).join('');
+    }
+
     function openCompareFromHistory(idx) {
         const history = JSON.parse(localStorage.getItem('ck_history') || '[]');
         const item = history[idx];
         if (!item) return;
-
         const modal = document.getElementById('compareModal');
         document.getElementById('modalUserImg').src = item.photo;
         document.getElementById('modalMatchImg').src = item.bestMatch;
@@ -350,32 +403,46 @@
     // --- PWA Service Worker Registration ---
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/static/sw.js')
+            navigator.serviceWorker.register('/sw.js')
                 .then(reg => console.log('SW Registered'))
                 .catch(err => console.log('SW Failed', err));
         });
     }
 
-    // PWA Install Prompt Logic
+    // PWA Install Prompt Logic (Notification Style)
     let deferredPrompt;
-    const installBtn = document.getElementById('installBtn');
+    const installBanner = document.getElementById('installBanner');
+    const heroInstallBtn = document.getElementById('installBtn');
 
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
-        installBtn.classList.remove('hidden');
+        // Tampilkan banner notifikasi & tombol hero
+        heroInstallBtn.classList.remove('hidden');
+        setTimeout(() => {
+            installBanner.classList.remove('translate-y-full', 'opacity-0');
+        }, 2000);
     });
 
-    installBtn.addEventListener('click', async () => {
+    function triggerInstall() {
         if (deferredPrompt) {
             deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            if (outcome === 'accepted') {
-                installBtn.classList.add('hidden');
-            }
-            deferredPrompt = null;
+            deferredPrompt.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    dismissBanner();
+                    heroInstallBtn.classList.add('hidden');
+                }
+                deferredPrompt = null;
+            });
         }
-    });
+    }
+    
+    // Hubungkan tombol di hero ke fungsi install
+    if (heroInstallBtn) heroInstallBtn.onclick = triggerInstall;
+
+    function dismissBanner() {
+        installBanner.classList.add('translate-y-full', 'opacity-0');
+    }
 
     // --- Original Form Submit Logic ---
     window.onload = function() {
@@ -390,23 +457,19 @@
         e.preventDefault();
         const fileInput = document.getElementById('fileInput');
         if (!fileInput.files || fileInput.files.length === 0) return;
-        
         const file = fileInput.files[0];
         const loading = document.getElementById('loading');
         const loadingText = loading.querySelector('p');
         const submitBtn = document.getElementById('submitBtn');
-        
         loading.classList.remove('hidden');
         loading.classList.add('flex');
         loadingText.innerText = "Mengunggah foto Anda...";
         submitBtn.disabled = true;
-        
         try {
             const formData = new FormData();
             formData.append('file', file);
             const response = await fetch('https://tmpfiles.org/api/v1/upload', { method: 'POST', body: formData });
             const data = await response.json();
-            
             if (data.status === 'success' && data.data && data.data.url) {
                 let publicUrl = data.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/').replace('http://', 'https://');
                 document.getElementById('image_url').value = publicUrl;
