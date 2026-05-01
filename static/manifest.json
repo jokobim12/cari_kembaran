@@ -1,0 +1,17 @@
+{
+  "name": "CariKembaran.ai",
+  "short_name": "CariKembaran",
+  "description": "Temukan kembaran Anda di seluruh dunia menggunakan kekuatan AI.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#10b981",
+  "icons": [
+    {
+      "src": "/static/logo.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
